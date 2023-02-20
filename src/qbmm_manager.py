@@ -136,6 +136,7 @@ class qbmm_manager:
                 if "max_skewness" in qbmm_config:
                     self.max_skewness = qbmm_config["max_skewness"]
                 self.inversion_option = self.max_skewness
+
                 #
             else:
                 message = "qbmm_mgr: set_inversion: Error: No method %s for num_internal_coords = 1"
@@ -148,7 +149,7 @@ class qbmm_manager:
             #
             if self.method == "chyqmom":
                 #
-                self.moment_invert = conditional_hyperbolic
+                #self.moment_invert = conditional_hyperbolic
                 self.inversion_algorithm = conditional_hyperbolic
                 self.max_skewness = 30
                 self.permutation = 12
@@ -159,6 +160,43 @@ class qbmm_manager:
                 self.inversion_option = self.max_skewness
                 self.inversion_option = self.permutation
                 self.inversion_option = self.checks
+
+            if self.method == "cqmom12":
+                self.inversion_algorithm = cqmom12
+                self.max_skewness = 30
+                self.permutation = 12
+                if "max_skewness" in qbmm_config:
+                    self.max_skewness = qbmm_config["max_skewness"]
+                if "permutation" in qbmm_config:
+                    self.permutation = qbmm_config["permutation"]
+                self.inversion_option = self.max_skewness
+                self.inversion_option = self.permutation
+                self.inversion_option = self.checks 
+
+            if self.method == "cqmom21":
+                self.inversion_algorithm = cqmom21
+                self.max_skewness = 30
+                self.permutation = 12
+                if "max_skewness" in qbmm_config:
+                    self.max_skewness = qbmm_config["max_skewness"]
+                if "permutation" in qbmm_config:
+                    self.permutation = qbmm_config["permutation"]
+                self.inversion_option = self.max_skewness
+                self.inversion_option = self.permutation
+                self.inversion_option = self.checks
+
+            if self.method == "cqmom_avg":
+                self.inversion_algorithm = cqmom_avg
+                self.max_skewness = 30
+                self.permutation = 12
+                if "max_skewness" in qbmm_config:
+                    self.max_skewness = qbmm_config["max_skewness"]
+                if "permutation" in qbmm_config:
+                    self.permutation = qbmm_config["permutation"]
+                self.inversion_option = self.max_skewness
+                self.inversion_option = self.permutation
+                self.inversion_option = self.checks                
+
                 #
         elif self.num_internal_coords == 3:
             #
@@ -228,6 +266,34 @@ class qbmm_manager:
                         % self.num_quadrature_nodes
                     )
                     quit()
+
+            elif self.method == "cqmom12":
+                    if self.num_quadrature_nodes == 6:
+                        self.indices = np.array(
+                            [
+                             [0, 0], [1, 0], [2, 0], [3, 0], 
+                             [0, 1], [1, 1], [0, 2], [1, 2], 
+                             [0, 3], [1, 3],
+                            ]
+                        )
+            elif self.method == "cqmom21":
+                    if self.num_quadrature_nodes == 6:
+                        self.indices = np.array(
+                            [
+                             [0, 0], [0, 1], [0, 2], [0, 3], 
+                             [1, 0], [1, 1], [2, 0], [2, 1],
+                             [3, 0], [3, 1]
+                            ]
+                        )
+            elif self.method == "cqmom_avg":
+                    if self.num_quadrature_nodes == 6:
+                        self.indices = np.array(
+                            [
+                             [0, 0], [1, 0], [2, 0], [3, 0], 
+                             [0, 1], [1, 1], [2, 1], [3, 1],
+                             [0, 2], [1, 2], [0, 3], [1, 3],
+                            ]
+                        )
             else:
                 print(
                     "qbmm_mgr: moment_indices: Error: method is not chyqmom for 2 internal coordinates, aborting... %i"
@@ -262,6 +328,32 @@ class qbmm_manager:
                             [0, 0, 4],
                         ]
                     )
+                elif self.method == "cqmom123":
+                    if self.num_quadrature_nodes == 8:
+                        self.indices = np.array(
+                            [0, 0, 0],
+                            [1, 0, 0],
+                            [2, 0, 0],
+                            [3, 0, 0],
+                            [0, 1, 0],
+                            [1, 1, 0],
+                            [0, 2, 0], 
+                            [1, 2, 0],
+                            [0, 3, 0], 
+                            [1, 3, 0],
+                            [0, 0, 1],
+                            [1, 0, 1],
+                            [0, 1, 1],
+                            [1, 1, 1],
+                            [0, 0, 2],
+                            [1, 0, 2],
+                            [0, 1, 2],
+                            [1, 1, 2],
+                            [0, 0, 3],
+                            [1, 0, 3],
+                            [0, 1, 3],
+                            [1, 1, 3],
+                        )
                 else:
                     print(
                         "qbmm_mgr: moment_indices: Error: incorrect number of quadrature nodes (not 27), aborting... %i"
@@ -311,6 +403,13 @@ class qbmm_manager:
             xddot = parse_expr(self.governing_dynamics)
             integrand = xddot * (x ** l) * (xdot ** (m - 1))
             self.symbolic_indices = [l, m]
+        elif self.num_internal_coords == 3:
+            x, xdot, pb = smp.symbols("x xdot pb")
+            l, m, n = smp.symbols("l m n", real=True)
+            xddot = parse_expr(self.governing_dynamics)
+            integrand = xddot * (x ** l) * (xdot ** (m-1)) * (pb ** n)
+            self.symbolic_indices = [l, m, n]
+
 
         terms = smp.powsimp(smp.expand(integrand)).args
         num_terms = len(terms)
@@ -319,6 +418,8 @@ class qbmm_manager:
         total_num_terms = num_terms
         if self.num_internal_coords == 2:
             total_num_terms += 1
+        if self.num_internal_coords == 3:
+            total_num_terms += 3
 
         # Initialize exponents and coefficients (weird, but works)
         self.exponents = [
@@ -336,8 +437,12 @@ class qbmm_manager:
             self.exponents[i, 0] = terms[i].as_coeff_exponent(x)[1]
             if self.num_internal_coords == 1:
                 self.coefficients[i] = l * smp.poly(terms[i]).coeffs()[0]
-            else:
+            elif self.num_internal_coords == 2:
                 self.exponents[i, 1] = terms[i].as_coeff_exponent(xdot)[1]
+                self.coefficients[i] = m * smp.poly(terms[i]).coeffs()[0]
+            elif self.num_internal_coords == 3:
+                self.exponents[i, 1] = terms[i].as_coeff_exponent(xdot)[1]
+                self.exponents[i, 2] = terms[i].as_coeff_exponent(pb)[2]
                 self.coefficients[i] = m * smp.poly(terms[i]).coeffs()[0]
 
         # Add extra constant term if in 2D
@@ -345,6 +450,24 @@ class qbmm_manager:
             self.exponents[num_terms, 0] = l - 1
             self.exponents[num_terms, 1] = m + 1
             self.coefficients[num_terms] = l
+
+        if self.num_internal_coords == 3:
+            self.exponents[num_terms, 0] = l - 1
+            self.exponents[num_terms, 1] = m + 1
+            self.exponents[num_terms, 2] = n
+            self.coefficients[num_terms] = l
+
+            self.exponents[num_terms + 1, 0] = l - 1
+            self.exponents[num_terms + 1, 1] = m + 1
+            self.exponents[num_terms + 1, 2] = n - 1
+            self.coefficients[num_terms + 1] = -4.2 * n 
+
+            C = 1
+
+            self.exponents[num_terms + 2, 0] = l 
+            self.exponents[num_terms + 2, 1] = m
+            self.exponents[num_terms + 2, 2] = n - 1
+            self.coefficients[num_terms + 2] = C * n 
 
         self.num_coefficients = len(self.coefficients)
         self.num_exponents = len(self.exponents)
@@ -356,6 +479,9 @@ class qbmm_manager:
         # message = 'qbmm_mgr: transport_terms: '
         # sym_array_pretty_print( message, 'coefficients', self.coefficients )
 
+        #print(self.exponents)
+        #print(self.coefficients)
+
         for i in range(self.num_coefficients):
             if self.num_internal_coords == 1:
                 self.coefficients[i] = smp.lambdify([l], self.coefficients[i])
@@ -365,6 +491,10 @@ class qbmm_manager:
                 self.coefficients[i] = smp.lambdify([l, m], self.coefficients[i])
                 for j in range(self.num_internal_coords):
                     self.exponents[i, j] = smp.lambdify([l, m], self.exponents[i, j])
+            elif self.num_internal_coords == 3:
+                self.coefficients[i] = smp.lambdify([l, m, n], self.coefficients[i])
+                for j in range(self.num_internal_coords):
+                    self.exponents[i, j] = smp.lambdify([l, m, n], self.exponents[i, j])                    
 
         return
 
@@ -385,7 +515,24 @@ class qbmm_manager:
         """
         return self.inversion_algorithm(moments, self.inversion_option)
 
-    def moment_invert_2PD(self, moments):
+    def moment_invert_2PD(self, moments, indices):
+        """
+        This function inverts moments into a quadrature rule in ND > 1
+
+        :param moments: Tracked moments
+        :type moments: array like
+        :return: quadrature abscissas, weights
+        :rtype: array like
+
+        This is never directly invoked. Instead, the user calls
+
+        >>> xi, wts = qbmm_mgr.moment_inver(moments)
+
+        and qbmm_manager automatically selects moment_invert_2PD based if ``num_internal_coords > 1``
+        """
+        return self.inversion_algorithm(moments, self.indices, self.inversion_option)
+
+    def moment_invert_3PD(self, moments, indices):
         """
         This function inverts moments into a quadrature rule in ND > 1
 
@@ -419,13 +566,57 @@ class qbmm_manager:
         moments = np.zeros(len(indices))
         for i in range(len(indices)):
             if self.num_internal_coords == 3:
-                moments[i] = quadrature_3d(
-                    weights, abscissas, indices[i], self.num_quadrature_nodes
-                )
+                if self.method == "cqmom123":
+                    moments[i] = weights[0][0]*(abscissas[0][0]**indices[i][0]) \
+                    * (weights[1][0]* (abscissas[1][0] ** indices[i][1])) \
+                    * quadrature_1d(weights[3], abscissas[3], indices[i][2])\
+                    + weights[0][0]*(abscissas[0][0]**indices[i][0]) \
+                    * (weights[1][1]* (abscissas[1][1] ** indices[i][1])) \
+                    * quadrature_1d(weights[4], abscissas[4], indices[i][2])\
+                    + weights[0][1]*(abscissas[0][1]**indices[i][0]) \
+                    * (weights[2][0]* (abscissas[2][0] ** indices[i][1])) \
+                    * quadrature_1d(weights[5], abscissas[5], indices[i][2])\
+                    + weights[0][1]*(abscissas[0][1]**indices[i][0]) \
+                    * (weights[2][1]* (abscissas[2][1] ** indices[i][1])) \
+                    * quadrature_1d(weights[6], abscissas[6], indices[i][2])
+                else:
+                    moments[i] = quadrature_3d(
+                        weights, abscissas, indices[i], self.num_quadrature_nodes
+                    )
             if self.num_internal_coords == 2:
-                moments[i] = quadrature_2d(
-                    weights, abscissas, indices[i], self.num_quadrature_nodes
-                )
+                if self.method == "cqmom12":
+                    moments[i] = weights[0][0]*(abscissas[0][0]**indices[i][0]) \
+                        *quadrature_1d(weights[1],abscissas[1],indices[i][1]) \
+                        + weights[0][1]*(abscissas[0][1]**indices[i][0]) \
+                        *quadrature_1d(weights[2],abscissas[2],indices[i][1]) 
+                elif self.method == "cqmom21":
+                    moments[i] = weights[0][0]*(abscissas[0][0]**indices[i][1]) \
+                        *quadrature_1d(weights[1],abscissas[1],indices[i][0]) \
+                        + weights[0][1]*(abscissas[0][1]**indices[i][1]) \
+                        *quadrature_1d(weights[2],abscissas[2],indices[i][0])
+                elif self.method == "cqmom_avg":
+                    abscissas_12 = abscissas[0]
+                    weights_12 = weights[0]
+                    abscissas_21 = abscissas[1]
+                    weights_21 = weights[1]
+                    if i != 6 and i != 7:
+                        moments[i] = weights_12 [0][0]*(abscissas_12 [0][0]**indices[i][0]) \
+                            *quadrature_1d(weights_12 [1],abscissas_12 [1],indices[i][1]) \
+                            + weights_12[0][1]*(abscissas_12 [0][1]**indices[i][0]) \
+                            *quadrature_1d(weights_12 [2],abscissas_12 [2],indices[i][1])
+
+                    if i != 9 and i != 11:
+                        moments[i] += weights_21[0][0]*(abscissas_21[0][0]**indices[i][1]) \
+                            *quadrature_1d(weights_21[1],abscissas_21[1],indices[i][0]) \
+                            + weights_21[0][1]*(abscissas_21[0][1]**indices[i][1]) \
+                            *quadrature_1d(weights_21[2],abscissas_21[2],indices[i][0])                     
+                    if i != 6 and i!= 7 and i != 9 and i != 11:
+                        moments[i] = moments[i]/2
+
+                else:
+                    moments[i] = quadrature_2d(
+                        weights, abscissas, indices[i], self.num_quadrature_nodes
+                    )
             elif self.num_internal_coords == 1:
                 moments[i] = quadrature_1d(weights, abscissas, indices[i])
         return moments

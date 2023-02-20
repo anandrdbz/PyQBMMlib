@@ -100,6 +100,11 @@ def wheeler(moments, adaptive=False):
     # Check if moments are unrealizable
     if b.min() < 0:
         print("Moments in Wheeler_moments are not realizable! Program exits.")
+        print(b[1])
+        print(a[0])
+        print(sigma[2,2])
+        print(sigma[1,3])
+        print(sigma[1,2])
         exit()
 
     # Setup Jacobi matrix for n-point quadrature, adapt n using rmin and eabs
@@ -138,6 +143,166 @@ def wheeler(moments, adaptive=False):
                 return x, w
         else:
             return x, w
+
+
+def cqmom12(moments, indices, max_skewness=30, checks=True):
+
+    num_moments = len(moments)
+
+    mom00 = moments[0]
+    mom10 = moments[1]
+    mom20 = moments[2]
+    mom30 = moments[3]
+
+    mom01 = moments[4]
+    mom11 = moments[5]
+
+    mom02 = moments[6]
+    mom12 = moments[7]
+
+    mom03 = moments[8]
+    mom13 = moments[9]
+
+
+    x, w = wheeler(np.array([mom00, mom10, mom20, mom30]))
+
+    M = np.linalg.inv(np.reshape(np.array([w, w*x]), (2,2)))
+
+    c00, c10 = np.array([1.0, 1.0]).tolist()
+    c01, c11 = (M @ np.array([mom01, mom11])).tolist()
+    c02, c12 = (M @ np.array([mom02, mom12])).tolist()
+    c03, c13 = (M @ np.array([mom03, mom13])).tolist()
+
+    print("Here 1")
+    xc1, wc1 = wheeler(np.array([c00, c01, c02, c03]))
+    print("Here 2")
+    xc2, wc2 = wheeler(np.array([c10, c11, c12, c13]))
+    print("Here 3")
+
+    wc = np.reshape(np.array([w, wc1, wc2]), (3,2))
+    xc = np.reshape(np.array([x, xc1, xc2]), (3,2))
+
+    return  xc, wc
+
+
+def cqmom21(moments, indices, max_skewness=30, checks=True):
+
+    num_moments = len(moments)
+
+    mom00 = moments[0]
+    mom01 = moments[1]
+    mom02 = moments[2]
+    mom03 = moments[3]
+
+    mom10 = moments[4]
+    mom11 = moments[5]
+
+    mom20 = moments[6]
+    mom21 = moments[7]
+
+    mom30 = moments[8]
+    mom31 = moments[9]
+
+    x, w = wheeler(np.array([mom00, mom01, mom02, mom03]))
+
+    M = np.linalg.inv(np.reshape(np.array([w, w*x]), (2,2)))
+
+    c00, c10 = np.array([1.0, 1.0]).tolist()
+    c01, c11 = (M @ np.array([mom10, mom11])).tolist()
+    c02, c12 = (M @ np.array([mom20, mom21])).tolist()
+    c03, c13 = (M @ np.array([mom30, mom31])).tolist()
+
+    xc1, wc1 = wheeler(np.array([c00, c01, c02, c03]))
+    xc2, wc2 = wheeler(np.array([c10, c11, c12, c13]))
+
+    wc = np.reshape(np.array([w, wc1, wc2]), (3,2))
+    xc = np.reshape(np.array([x, xc1, xc2]), (3,2))
+
+    return xc, wc
+
+def cqmom_avg(moments, indices, max_skewness=30, checks=True):
+
+    moments_12 = np.array(np.concatenate([moments[0:6],moments[8:12]]))
+    moments_21 = np.array([moments[0], moments[4], moments[8], moments[10], moments[1], moments[5], moments[2], moments[6], moments[3], moments[7]])
+
+    x12, w12 = cqmom12(moments_12, indices)
+    x21, w21 = cqmom21(moments_21, indices)
+
+    x = np.array([x12, x21])
+
+    w = np.array([w12, w21])
+
+    return x, w
+
+
+def cqmom123(moments, indices, max_skewness=30, checks=True):
+
+    num_moments = len(moments)
+
+    mom000 = moments[0]
+    mom100 = moments[1]
+    mom200 = moments[2]
+    mom300 = moments[3]
+
+    mom010 = moments[4]
+    mom110 = moments[5]
+
+    mom020 = moments[6]
+    mom120 = moments[7]
+
+    mom030 = moments[8]
+    mom130 = moments[9]
+
+    mom001 = moments[10]
+    mom101 = moments[11]
+    mom011 = moments[12]
+    mom111 = moments[13]
+
+    mom002 = moments[14]
+    mom102 = moments[15]
+    mom012 = moments[16]
+    mom112 = moments[17]
+
+    mom003 = moments[18]
+    mom103 = moments[19]
+    mom013 = moments[20]
+    mom113 = moments[21]        
+
+
+    x, w = wheeler(np.array([mom000, mom100, mom200, mom300]))
+
+    M = np.linalg.inv(np.reshape(np.array([w, w*x]), (2,2)))
+
+    c00, c10 = np.array([1.0, 1.0]).tolist()
+    c01, c11 = (M @ np.array([mom010, mom110])).tolist()
+    c02, c12 = (M @ np.array([mom020, mom120])).tolist()
+    c03, c13 = (M @ np.array([mom030, mom130])).tolist()
+
+    xc1, wc1 = wheeler(np.array([c00, c01, c02, c03]))
+    xc2, wc2 = wheeler(np.array([c10, c11, c12, c13]))
+
+    A0 = np.concatenate(w[0]*wc1, w[1]*wc2)
+    A1 = np.concatenate(w[0]*x[0]*wc1, w[1]*x[1]*wc2)
+    A2 = np.concatenate(w[0]*wc1*xc1, w[1]*wc2*xc2)
+    A3 = np.concatenate(w[0]*x[0]*wc1*xc1, w[1]*x[1]*wc2*xc2)
+
+    M = np.linalg.inv(np.reshape(np.array([A0, A1, A2, A3])(4,4)))
+
+    c000, c010, c100, c110 = np.array([1.0, 1.0, 1.0, 1.0]).tolist()
+    c001, c011, c101, c111 = (M @ np.array([mom001, mom101, mom011, m111]))
+    c002, c012, c102, c112 = (M @ np.array([mom002, mom102, mom012, m112]))
+    c003, c013, c103, c113 = (M @ np.array([mom003, mom103, mom013, m113]))
+
+    xcc1, wcc1 = wheeler(np.array([c000, c001, c002, c003]))
+    xcc2, wcc2 = wheeler(np.array([c010, c011, c012, c013]))
+    xcc3, wcc3 = wheeler(np.array([c100, c101, c102, c103]))
+    xcc4, wcc4 = wheeler(np.array([c110, c111, c112, c113]))
+
+    wc = np.reshape(np.array([w, wc1, wc2, wcc1, wcc2, wcc3, wcc4]), (7,2))
+    xc = np.reshape(np.array([x, xc1, xc2, xcc1, xcc2, xcc3, xcc4]), (7,2))
+
+    return  xc, wc
+
 
 
 def hyperbolic(moments, max_skewness=30, checks=True):
